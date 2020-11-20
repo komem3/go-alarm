@@ -1,4 +1,4 @@
-package alarm
+package sound
 
 import (
 	"os"

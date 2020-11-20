@@ -1,28 +1,36 @@
-# go-alarm
+# goalarm
+
+Goalarm run alarm server. It receive a command, and a response its status.
 
 ## install
 
 ```shell
-$ go get github.com/komem3/go-alarm/cmd/alarm
+$ go get github.com/komem3/goalarm/cmd/goalarm
 ```
 
 ## Usage
 
 ```shell
-$ alarm -h
-Usage of alarm:
+$ goalarm -h
+Usage of goalarm:
+  -describe
+    	Describe command or status.
   -file string
-        Path of sound file. (default "bell.mp3")
+    	Path of sound file.
   -hour int
-        Wait hour.
+    	Wait hour.
   -min int
-        Wait minute.
+    	Wait minute.
   -sec int
-        Wait second.
+    	Wait second.
   -time string
-        Call time.(15:00:01)
+    	Call time.(15:00:01)
 ```
 
 ## Author
 
 komem3
+
+## License
+
+[MIT](./LICENSE)

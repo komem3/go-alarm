@@ -7,14 +7,20 @@ import (
 	"time"
 )
 
+type Task struct {
+	Index int
+	Range time.Duration
+	Name  string
+}
+
 type timeServer struct {
-	running  bool
-	ticker   *time.Timer
-	start    time.Time
-	duration time.Duration
-	now      func() time.Time
-	handler  Handler
-	reader   io.Reader
+	running bool
+	ticker  *time.Timer
+	start   time.Time
+	task    Task
+	now     func() time.Time
+	handler Handler
+	reader  io.Reader
 }
 
 type Handler interface {
@@ -27,18 +33,18 @@ func (h handlerFunc) Serve(r Result) {
 	h(r)
 }
 
-func NewTimeServer(d time.Duration) *timeServer {
+func NewTimeServer(task Task) *timeServer {
 	tserver := &timeServer{
-		duration: d,
-		now:      time.Now,
-		running:  false,
+		task:    task,
+		now:     time.Now,
+		running: false,
 	}
 	return tserver
 }
 
 func (t *timeServer) StartTimer() {
 	t.start = t.now()
-	t.ticker = time.NewTimer(t.duration)
+	t.ticker = time.NewTimer(t.task.Range)
 }
 
 func (t *timeServer) HandlerFunc(f func(r Result)) {
@@ -63,6 +69,7 @@ func (t *timeServer) readCommand() (result Result) {
 			result = Result{
 				Status: ErrorStatus,
 				Error:  err,
+				Task:   t.task,
 			}
 			t.handler.Serve(result)
 			t.running = false
@@ -77,7 +84,7 @@ func (t *timeServer) readCommand() (result Result) {
 		if status == PauseStatus {
 			left = pauseLeft
 		} else {
-			left = t.duration - t.now().Sub(t.start)
+			left = t.task.Range - t.now().Sub(t.start)
 		}
 		leftSec := fmt.Sprintf("%s", left.Round(time.Second))
 
@@ -86,6 +93,7 @@ func (t *timeServer) readCommand() (result Result) {
 			result = Result{
 				Left:   leftSec,
 				Status: status,
+				Task:   t.task,
 			}
 		case StartCommand:
 			status = RunningStatus
@@ -95,6 +103,7 @@ func (t *timeServer) readCommand() (result Result) {
 			result = Result{
 				Left:   leftSec,
 				Status: status,
+				Task:   t.task,
 			}
 		case PauseCommand:
 			status = PauseStatus
@@ -103,28 +112,32 @@ func (t *timeServer) readCommand() (result Result) {
 			result = Result{
 				Left:   leftSec,
 				Status: status,
+				Task:   t.task,
 			}
 		case StopCommand:
 			t.ticker.Stop()
 			result = Result{
 				Left:   leftSec,
 				Status: StopStatus,
+				Task:   t.task,
 			}
 			t.running = false
 		case RestartCommand:
 			status = RunningStatus
 			t.start = t.now()
 			t.ticker.Stop()
-			t.ticker.Reset(t.duration)
+			t.ticker.Reset(t.task.Range)
 			result = Result{
-				Left:   fmt.Sprintf("%s", t.duration.Round(time.Second)),
+				Left:   fmt.Sprintf("%s", t.task.Range.Round(time.Second)),
 				Status: status,
+				Task:   t.task,
 			}
 		default:
 			err = fmt.Errorf("'%s' is %w", line[:len(line)-1], ErrUnknownCommand)
 			result = Result{
 				Status: ErrorStatus,
 				Error:  err,
+				Task:   t.task,
 			}
 			t.running = false
 		}
@@ -138,6 +151,7 @@ func (t *timeServer) finish() Result {
 	t.running = false
 	r := Result{
 		Status: FinishStatus,
+		Task:   t.task,
 	}
 	t.handler.Serve(r)
 	return r

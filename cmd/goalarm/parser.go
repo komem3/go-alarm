@@ -4,7 +4,28 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	rtn "github.com/komem3/goalarm/internal/routine"
+	"github.com/komem3/goalarm/internal/timeserver"
 )
+
+type taskJson struct {
+	Index int           `json:"index"`
+	Range time.Duration `json:"range"`
+	Name  string        `json:"name"`
+}
+
+func convertTask(tasks []taskJson) rtn.Routine {
+	r := make(rtn.Routine, 0, len(tasks))
+	for _, t := range tasks {
+		r = append(r, timeserver.Task{
+			Index: t.Index,
+			Range: time.Minute * t.Range,
+			Name:  t.Name,
+		})
+	}
+	return r
+}
 
 func timeParse(tstr string) (d time.Duration, err error) {
 	now := time.Now()

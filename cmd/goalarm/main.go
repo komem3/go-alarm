@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/komem3/goalarm/internal/sound"
+	rtn "github.com/komem3/goalarm/internal/routine"
 	"github.com/komem3/goalarm/internal/timeserver"
 )
 
@@ -17,6 +17,7 @@ var (
 	min      int64
 	hour     int64
 	tim      string
+	routine  string
 	describe bool
 )
 
@@ -26,6 +27,7 @@ func init() {
 	flag.Int64Var(&min, "min", 0, "Wait minute.")
 	flag.Int64Var(&hour, "hour", 0, "Wait hour.")
 	flag.StringVar(&tim, "time", "", "Call time.(15:00:01)")
+	flag.StringVar(&routine, "routine", "", `Alarm routine. Format is json array. [{"range":20,"name":"working"},{"range":5,"name":"break"}]`)
 	flag.BoolVar(&describe, "describe", false, "Describe command or status.")
 	flag.Parse()
 }
@@ -52,12 +54,26 @@ func main() {
 		return
 	}
 
-	if file == "" || sec == 0 && min == 0 && hour == 0 && tim == "" {
+	if file == "" || sec == 0 && min == 0 && hour == 0 && tim == "" && routine == "" {
 		fatalf("")
 	}
 
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		fatalf("%s does not exist\n", file)
+	}
+
+	if routine != "" {
+		var rj []taskJson
+		err := json.Unmarshal([]byte(routine), &rj)
+		if err != nil {
+			fmt.Printf("%+v\n", routine) // output for debug
+
+			fatalf("parse routine: %v\n", err)
+		}
+		if err := rtn.RunRoutine(os.Stdin, os.Stdout, convertTask(rj), file); err != nil {
+			fatalf(err.Error())
+		}
+		return
 	}
 
 	var (
@@ -73,27 +89,8 @@ func main() {
 		duration = time.Hour*time.Duration(hour) + time.Minute*time.Duration(min) + time.Second*time.Duration(sec)
 	}
 
-	jout := json.NewEncoder(os.Stdout)
-	tserver := timeserver.NewTimeServer(duration)
-	tserver.StartTimer()
-	tserver.HandlerFunc(func(r timeserver.Result) {
-		err := jout.Encode(r)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v", err)
-		}
-	})
-
-	result := tserver.Listen(os.Stdin)
-	if result.Error != nil {
-		fatalf("server error : %v\n", result.Error)
-	}
-
-	if result.Status == timeserver.StopStatus {
-		return
-	}
-
-	if err := sound.Alarm(file); err != nil {
-		fatalf("alarm : %v\n", err)
+	if err := rtn.RunAlarm(os.Stdin, os.Stdout, duration, file); err != nil {
+		fatalf(err.Error())
 	}
 }
 

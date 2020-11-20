@@ -1,7 +1,6 @@
 package timeserver_test
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"testing"
@@ -9,14 +8,15 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/komem3/goalarm/internal/testutil"
 	"github.com/komem3/goalarm/internal/timeserver"
 )
 
 type (
 	given struct {
-		waitDuration time.Duration
-		commandTime  time.Time
-		command      string
+		task        timeserver.Task
+		commandTime time.Time
+		command     string
 	}
 	want struct {
 		results []timeserver.Result
@@ -32,15 +32,24 @@ var oneCommandTestCase = testcases{
 	{
 		"get command",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
-			command:      string(timeserver.GetCommand),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "get",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command:     string(timeserver.GetCommand),
 		},
 		want{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "5s",
+					Left:   "5s",
+					Task: timeserver.Task{
+						Index: 1,
+						Range: time.Second * 10,
+						Name:  "get",
+					},
 				},
 				{
 					Status: timeserver.ErrorStatus,
@@ -52,15 +61,19 @@ var oneCommandTestCase = testcases{
 	{
 		"pause command",
 		given{
-			waitDuration: time.Minute * 11,
-			commandTime:  shortTime(1, 1, 0),
-			command:      string(timeserver.PauseCommand),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Minute * 11,
+				Name:  "pause",
+			},
+			commandTime: shortTime(1, 1, 0),
+			command:     string(timeserver.PauseCommand),
 		},
 		want{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "10m0s",
+					Left:   "10m0s",
 				},
 				{
 					Status: timeserver.ErrorStatus,
@@ -72,15 +85,19 @@ var oneCommandTestCase = testcases{
 	{
 		"stop command",
 		given{
-			waitDuration: time.Hour * 11,
-			commandTime:  shortTime(1, 1, 1),
-			command:      string(timeserver.StopCommand),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Hour * 11,
+				Name:  "stop",
+			},
+			commandTime: shortTime(1, 1, 1),
+			command:     string(timeserver.StopCommand),
 		},
 		want{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.StopStatus,
-					Left:    "10h58m59s",
+					Left:   "10h58m59s",
 				},
 			},
 		},
@@ -88,15 +105,19 @@ var oneCommandTestCase = testcases{
 	{
 		"restart command",
 		given{
-			waitDuration: time.Second * 5,
-			commandTime:  shortTime(0, 0, 1),
-			command:      string(timeserver.RestartCommand),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 5,
+				Name:  "pause",
+			},
+			commandTime: shortTime(0, 0, 1),
+			command:     string(timeserver.RestartCommand),
 		},
 		want{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "5s",
+					Left:   "5s",
 				},
 				{
 					Status: timeserver.ErrorStatus,
@@ -108,9 +129,13 @@ var oneCommandTestCase = testcases{
 	{
 		"unknown command",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
-			command:      "unknown",
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "unknown",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command:     "unknown",
 		},
 		want{
 			results: []timeserver.Result{
@@ -128,8 +153,12 @@ var twoCommandTestCase = testcases{
 	{
 		"get get",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "get get",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.GetCommand,
 				timeserver.GetCommand,
@@ -139,12 +168,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
@@ -157,8 +186,12 @@ var twoCommandTestCase = testcases{
 	{
 		"pause get",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "pause get",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.PauseCommand,
 				timeserver.GetCommand,
@@ -168,12 +201,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
@@ -186,8 +219,12 @@ var twoCommandTestCase = testcases{
 	{
 		"restart get",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "restart get",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.RestartCommand,
 				timeserver.GetCommand,
@@ -197,12 +234,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "10s",
+					Left:   "10s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "10s",
+					Left:   "10s",
 					Error:  nil,
 				},
 				{
@@ -216,8 +253,12 @@ var twoCommandTestCase = testcases{
 	{
 		"get stop",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "get stop",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.GetCommand,
 				timeserver.StopCommand,
@@ -227,12 +268,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.StopStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 			},
@@ -241,8 +282,12 @@ var twoCommandTestCase = testcases{
 	{
 		"pause stop",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "pause stop",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.PauseCommand,
 				timeserver.StopCommand,
@@ -252,12 +297,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.StopStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 			},
@@ -266,8 +311,12 @@ var twoCommandTestCase = testcases{
 	{
 		"restart stop",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "restart stop",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.RestartCommand,
 				timeserver.StopCommand,
@@ -277,12 +326,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "10s",
+					Left:   "10s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.StopStatus,
-					Left:    "10s",
+					Left:   "10s",
 					Error:  nil,
 				},
 			},
@@ -292,8 +341,12 @@ var twoCommandTestCase = testcases{
 	{
 		"get pause",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "get pause",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.GetCommand,
 				timeserver.PauseCommand,
@@ -303,12 +356,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
@@ -321,8 +374,12 @@ var twoCommandTestCase = testcases{
 	{
 		"pause pause",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "pause pause",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.PauseCommand,
 				timeserver.PauseCommand,
@@ -332,12 +389,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "5s",
+					Left:   "5s",
 					Error:  nil,
 				},
 				{
@@ -350,8 +407,12 @@ var twoCommandTestCase = testcases{
 	{
 		"restart pause",
 		given{
-			waitDuration: time.Second * 10,
-			commandTime:  shortTime(1, 0, 5),
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "restart pause",
+			},
+			commandTime: shortTime(1, 0, 5),
 			command: fmt.Sprintf("%s\n%s",
 				timeserver.RestartCommand,
 				timeserver.PauseCommand,
@@ -361,12 +422,12 @@ var twoCommandTestCase = testcases{
 			results: []timeserver.Result{
 				{
 					Status: timeserver.RunningStatus,
-					Left:    "10s",
+					Left:   "10s",
 					Error:  nil,
 				},
 				{
 					Status: timeserver.PauseStatus,
-					Left:    "10s",
+					Left:   "10s",
 					Error:  nil,
 				},
 				{
@@ -382,9 +443,13 @@ var finishTestCase = testcases{
 	{
 		name: "alarm finish",
 		given: given{
-			waitDuration: 0,
-			commandTime:  shortTime(1, 0, 0),
-			command:      string(timeserver.GetCommand),
+			task: timeserver.Task{
+				Index: 1,
+				Range: 0,
+				Name:  "alarm finish",
+			},
+			commandTime: shortTime(1, 0, 0),
+			command:     string(timeserver.GetCommand),
 		},
 		want: want{
 			results: []timeserver.Result{
@@ -424,7 +489,7 @@ func TestTimeSever_Listen(t *testing.T) {
 				tt := tt
 				t.Run(tt.name, func(t *testing.T) {
 					t.Parallel()
-					tserver := timeserver.NewTimeServer(tt.given.waitDuration)
+					tserver := timeserver.NewTimeServer(tt.given.task)
 					var results []timeserver.Result
 					{
 						tserver.SetNow(now)
@@ -434,35 +499,24 @@ func TestTimeSever_Listen(t *testing.T) {
 						tserver.StartTimer()
 						tserver.SetNow(tt.given.commandTime)
 					}
-					reader, err := mockIn(fmt.Sprintf("%s\n", tt.given.command))
-					if err != nil {
-						t.Fatal(err)
-					}
 
-					lastResult := tserver.Listen(reader)
+					lastResult := tserver.Listen(testutil.MockIn(fmt.Sprintf("%s\n", tt.given.command)))
 					if diff := cmp.Diff(len(results), len(tt.want.results)); diff != "" {
 						t.Fatalf("result length: given(-), want(+)\n%s\n", diff)
 					}
 
 					for i, r := range results {
+						tt.want.results[i].Task = tt.given.task
 						if diff := cmp.Diff(r.Error, tt.want.results[i].Error, cmpopts.EquateErrors()); diff != "" {
 							t.Errorf("result.Error: given(-), want(+)\n%s\n", diff)
 						}
-						if diff := cmp.Diff(r.Status, tt.want.results[i].Status); diff != "" {
-							t.Errorf("result.Status: given(-), want(+)\n%s\n", diff)
-						}
-						if diff := cmp.Diff(r.Left, tt.want.results[i].Left); diff != "" {
-							t.Errorf("result.Sec: given(-), want(+)\n%s\n", diff)
-						}
+
 						if i == len(results)-1 {
 							if diff := cmp.Diff(lastResult.Error, tt.want.results[i].Error, cmpopts.EquateErrors()); diff != "" {
 								t.Errorf("latestResult.Error: given(-), want(+)\n%s\n", diff)
 							}
-							if diff := cmp.Diff(lastResult.Status, tt.want.results[i].Status); diff != "" {
-								t.Errorf("latestResult.Status: given(-), want(+)\n%s\n", diff)
-							}
-							if diff := cmp.Diff(lastResult.Left, tt.want.results[i].Left); diff != "" {
-								t.Errorf("latestResult.Sec: given(-), want(+)\n%s\n", diff)
+							if diff := cmp.Diff(lastResult, tt.want.results[i], cmpopts.IgnoreFields(timeserver.Result{}, "Error")); diff != "" {
+								t.Errorf("result: given(-), want(+)\n%s\n", diff)
 							}
 						}
 					}
@@ -474,10 +528,4 @@ func TestTimeSever_Listen(t *testing.T) {
 
 func shortTime(h, min, sec int) time.Time {
 	return time.Date(2010, 1, 1, h, min, sec, 0, time.Local)
-}
-
-func mockIn(in string) (io.Reader, error) {
-	buf := new(bytes.Buffer)
-	_, err := buf.WriteString(in)
-	return buf, err
 }

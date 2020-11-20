@@ -2,6 +2,11 @@
 
 Goalarm run alarm server. It receive a command, and a response its status.
 
+## Dependencies
+
+https://github.com/hajimehoshi/oto#prerequisite
+
+
 ## install
 
 ```shell

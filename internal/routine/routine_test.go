@@ -71,6 +71,7 @@ func TestRunRoutine(t *testing.T) {
 				ioutil.Discard,
 				tt.given.r,
 				"dummy",
+				false,
 			)
 			if diff := cmp.Diff(err, tt.wantErr, cmpopts.EquateErrors()); diff != "" {
 				t.Errorf("routine.RunRoutine error: given(-), want(+)\n%s\n", diff)
@@ -92,7 +93,7 @@ func TestRunAlarm(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := routine.RunAlarm(testutil.MockIn(tt.given), ioutil.Discard, time.Second*10, "dummy")
+			err := routine.RunAlarm(testutil.MockIn(tt.given), ioutil.Discard, time.Second*10, "dummy", false)
 			if diff := cmp.Diff(err, tt.wantErr, cmpopts.EquateErrors()); diff != "" {
 				t.Errorf("routine.RunAlarm error: given(-), want(+)\n%s\n", diff)
 			}

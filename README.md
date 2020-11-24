@@ -24,6 +24,8 @@ Usage of goalarm:
     	Path of sound file.
   -hour int
     	Wait hour.
+  -loop
+    	Loop Alarm.
   -min int
     	Wait minute.
   -routine string
@@ -32,6 +34,7 @@ Usage of goalarm:
     	Wait second.
   -time string
     	Call time.(15:00:01)
+  -v	Ouput verbose.
 ```
 
 ## Author

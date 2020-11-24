@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/komem3/goalarm/internal/log"
 	rtn "github.com/komem3/goalarm/internal/routine"
 	"github.com/komem3/goalarm/internal/timeserver"
 )
@@ -18,6 +19,8 @@ var (
 	hour     int64
 	tim      string
 	routine  string
+	loop     bool
+	verbose  bool
 	describe bool
 )
 
@@ -28,11 +31,15 @@ func init() {
 	flag.Int64Var(&hour, "hour", 0, "Wait hour.")
 	flag.StringVar(&tim, "time", "", "Call time.(15:00:01)")
 	flag.StringVar(&routine, "routine", "", `Alarm routine. Format is json array. [{"range":20,"name":"working"},{"range":5,"name":"break"}]`)
+	flag.BoolVar(&loop, "loop", false, "Loop Alarm.")
 	flag.BoolVar(&describe, "describe", false, "Describe command or status.")
+	flag.BoolVar(&verbose, "v", false, "Ouput verbose.")
 	flag.Parse()
 }
 
 func main() {
+	log.SetVerbose(verbose)
+
 	if describe {
 		target := flag.Arg(0)
 		jw := json.NewEncoder(os.Stdin)
@@ -63,6 +70,7 @@ func main() {
 	}
 
 	if routine != "" {
+		log.Printf("input routine: %s\n", routine)
 		var rj []taskJson
 		err := json.Unmarshal([]byte(routine), &rj)
 		if err != nil {
@@ -70,7 +78,7 @@ func main() {
 
 			fatalf("parse routine: %v\n", err)
 		}
-		if err := rtn.RunRoutine(os.Stdin, os.Stdout, convertTask(rj), file); err != nil {
+		if err := rtn.RunRoutine(os.Stdin, os.Stdout, convertTask(rj), file, loop); err != nil {
 			fatalf(err.Error())
 		}
 		return
@@ -81,17 +89,20 @@ func main() {
 		err      error
 	)
 	if tim != "" {
+		log.Printf("input time: %s\n", tim)
 		duration, err = timeParse(tim)
 		if err != nil {
 			fatalf("parse time arg: %v\n", err)
 		}
 	} else {
+		log.Printf("input hour(%d), min(%d), sec(%d)\n", hour, min, sec)
 		duration = time.Hour*time.Duration(hour) + time.Minute*time.Duration(min) + time.Second*time.Duration(sec)
 	}
 
-	if err := rtn.RunAlarm(os.Stdin, os.Stdout, duration, file); err != nil {
+	if err := rtn.RunAlarm(os.Stdin, os.Stdout, duration, file, loop); err != nil {
 		fatalf(err.Error())
 	}
+
 }
 
 func fatalf(format string, args ...interface{}) {

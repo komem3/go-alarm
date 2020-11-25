@@ -100,7 +100,7 @@ func main() {
 	}
 
 	if err := rtn.RunAlarm(os.Stdin, os.Stdout, duration, file, loop); err != nil {
-		fatalf(err.Error())
+		fatalf("%v\n", err)
 	}
 
 }

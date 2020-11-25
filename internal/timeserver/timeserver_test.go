@@ -127,6 +127,30 @@ var oneCommandTestCase = testcases{
 		},
 	},
 	{
+		"start command",
+		given{
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 5,
+				Name:  "start",
+			},
+			commandTime: shortTime(0, 0, 1),
+			command:     string(timeserver.StartCommand),
+		},
+		want{
+			results: []timeserver.Result{
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "5s",
+				},
+				{
+					Status: timeserver.ErrorStatus,
+					Error:  io.EOF,
+				},
+			},
+		},
+	},
+	{
 		"unknown command",
 		given{
 			task: timeserver.Task{
@@ -427,6 +451,206 @@ var twoCommandTestCase = testcases{
 				},
 				{
 					Status: timeserver.PauseStatus,
+					Left:   "10s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.ErrorStatus,
+					Error:  io.EOF,
+				},
+			},
+		},
+	},
+	// restart
+	{
+		"get restart",
+		given{
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "get restart",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command: fmt.Sprintf("%s\n%s",
+				timeserver.GetCommand,
+				timeserver.RestartCommand,
+			),
+		},
+		want{
+			results: []timeserver.Result{
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "5s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "10s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.ErrorStatus,
+					Error:  io.EOF,
+				},
+			},
+		},
+	},
+	{
+		"pause restart",
+		given{
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "pause restart",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command: fmt.Sprintf("%s\n%s",
+				timeserver.PauseCommand,
+				timeserver.RestartCommand,
+			),
+		},
+		want{
+			results: []timeserver.Result{
+				{
+					Status: timeserver.PauseStatus,
+					Left:   "5s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "10s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.ErrorStatus,
+					Error:  io.EOF,
+				},
+			},
+		},
+	},
+	{
+		"restart restart",
+		given{
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "restart pause",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command: fmt.Sprintf("%s\n%s",
+				timeserver.RestartCommand,
+				timeserver.RestartCommand,
+			),
+		},
+		want{
+			results: []timeserver.Result{
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "10s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "10s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.ErrorStatus,
+					Error:  io.EOF,
+				},
+			},
+		},
+	},
+	// start
+	{
+		"get start",
+		given{
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "get start",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command: fmt.Sprintf("%s\n%s",
+				timeserver.GetCommand,
+				timeserver.StartCommand,
+			),
+		},
+		want{
+			results: []timeserver.Result{
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "5s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "5s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.ErrorStatus,
+					Error:  io.EOF,
+				},
+			},
+		},
+	},
+	{
+		"pause start",
+		given{
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "pause start",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command: fmt.Sprintf("%s\n%s",
+				timeserver.PauseCommand,
+				timeserver.StartCommand,
+			),
+		},
+		want{
+			results: []timeserver.Result{
+				{
+					Status: timeserver.PauseStatus,
+					Left:   "5s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "5s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.ErrorStatus,
+					Error:  io.EOF,
+				},
+			},
+		},
+	},
+	{
+		"restart start",
+		given{
+			task: timeserver.Task{
+				Index: 1,
+				Range: time.Second * 10,
+				Name:  "restart start",
+			},
+			commandTime: shortTime(1, 0, 5),
+			command: fmt.Sprintf("%s\n%s",
+				timeserver.RestartCommand,
+				timeserver.StartCommand,
+			),
+		},
+		want{
+			results: []timeserver.Result{
+				{
+					Status: timeserver.RunningStatus,
+					Left:   "10s",
+					Error:  nil,
+				},
+				{
+					Status: timeserver.RunningStatus,
 					Left:   "10s",
 					Error:  nil,
 				},

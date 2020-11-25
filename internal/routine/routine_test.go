@@ -2,7 +2,6 @@ package routine_test
 
 import (
 	"io/ioutil"
-	"os"
 	"testing"
 	"time"
 
@@ -24,7 +23,7 @@ func TestRunRoutine(t *testing.T) {
 		wantErr error
 	}{
 		{
-			"not mp3 file.",
+			"stop",
 			given{
 				r: routine.Routine{
 					{
@@ -40,7 +39,26 @@ func TestRunRoutine(t *testing.T) {
 				},
 				cmd: "stop\n",
 			},
-			os.ErrNotExist,
+			nil,
+		},
+		{
+			"finish",
+			given{
+				r: routine.Routine{
+					{
+						Index: 2,
+						Range: 0,
+						Name:  "second",
+					},
+					{
+						Index: 1,
+						Range: 0,
+						Name:  "first",
+					},
+				},
+				cmd: "get\n",
+			},
+			nil,
 		},
 		{
 			"bad command error",
@@ -81,19 +99,24 @@ func TestRunRoutine(t *testing.T) {
 }
 
 func TestRunAlarm(t *testing.T) {
+	type given struct {
+		command  string
+		duration time.Duration
+	}
 	tests := []struct {
 		name    string
-		given   string
+		given   given
 		wantErr error
 	}{
-		{"stop", "stop\n", nil},
-		{"bad command error", "unknown\n", timeserver.ErrUnknownCommand},
+		{"stop", given{"stop\n", time.Second}, nil},
+		{"finish", given{"get\n", 0}, nil},
+		{"bad command error", given{"unknown\n", time.Second}, timeserver.ErrUnknownCommand},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := routine.RunAlarm(testutil.MockIn(tt.given), ioutil.Discard, time.Second*10, "dummy", false)
+			err := routine.RunAlarm(testutil.MockIn(tt.given.command), ioutil.Discard, tt.given.duration, "dummy", false)
 			if diff := cmp.Diff(err, tt.wantErr, cmpopts.EquateErrors()); diff != "" {
 				t.Errorf("routine.RunAlarm error: given(-), want(+)\n%s\n", diff)
 			}

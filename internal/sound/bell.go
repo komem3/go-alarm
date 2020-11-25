@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
@@ -19,6 +20,7 @@ type Alarm struct {
 
 type Player interface {
 	Play()
+	PlayWait()
 }
 
 func NewAalarm(path string) (Player, error) {
@@ -42,6 +44,7 @@ func NewAalarm(path string) (Player, error) {
 	if err != nil {
 		return nil, err
 	}
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
 
 	buffer := beep.NewBuffer(format)
 	buffer.Append(streamer)
@@ -52,5 +55,15 @@ func NewAalarm(path string) (Player, error) {
 }
 
 func (a *Alarm) Play() {
+	log.Printf("async play sound\n")
 	speaker.Play(a.buffer.Streamer(0, a.buffer.Len()))
+}
+
+func (a *Alarm) PlayWait() {
+	log.Printf("wait play sound\n")
+	done := make(chan struct{})
+	speaker.Play(beep.Seq(a.buffer.Streamer(0, a.buffer.Len()), beep.Callback(func() {
+		done <- struct{}{}
+	})))
+	<-done
 }

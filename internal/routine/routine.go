@@ -36,7 +36,11 @@ func RunRoutine(r io.Reader, w io.Writer, routine Routine, file string, loop boo
 			if result.Status == timeserver.StopStatus {
 				return nil
 			}
-			alarm.Play()
+			if len(routine)-1 == i && !loop {
+				alarm.PlayWait()
+			} else {
+				alarm.Play()
+			}
 		}
 	}
 	return nil
@@ -47,8 +51,9 @@ func RunAlarm(r io.Reader, w io.Writer, d time.Duration, file string, loop bool)
 	if err != nil {
 		return err
 	}
+	jw := json.NewEncoder(w)
 	for l := true; l; l = loop {
-		result, err := runTask(r, json.NewEncoder(w),
+		result, err := runTask(r, jw,
 			timeserver.Task{
 				Index: 0,
 				Range: d,
@@ -60,7 +65,11 @@ func RunAlarm(r io.Reader, w io.Writer, d time.Duration, file string, loop bool)
 		if result.Status == timeserver.StopStatus {
 			return nil
 		}
-		alarm.Play()
+		if loop {
+			alarm.Play()
+		} else {
+			alarm.PlayWait()
+		}
 	}
 	return nil
 }

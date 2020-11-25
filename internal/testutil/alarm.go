@@ -12,4 +12,5 @@ func NewMockAlarm(_ string) (sound.Player, error) {
 	return &MockAlarm{}, nil
 }
 
-func (m *MockAlarm) Play() {}
+func (m *MockAlarm) Play()     {}
+func (m *MockAlarm) PlayWait() {}

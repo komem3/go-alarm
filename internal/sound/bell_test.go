@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/komem3/goalarm/internal/sound"
+	"github.com/komem3/goalarm/internal/testutil"
 )
 
 func TestAlarm(t *testing.T) {
@@ -16,13 +17,13 @@ func TestAlarm(t *testing.T) {
 	}{
 		{"mp3", "./sample.mp3", "mp3: EOF"},
 		{"wav", "./sample.wav", "wav: EOF"},
-		{"not suport format", "./sample.mp4", "unsuported ext .mp4"},
+		{"not suport format", "./sample.mp4", "open .mp4: unsuported ext"},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			if err := emptyFile(tt.given); err != nil {
+			if err := testutil.EmptyFile(tt.given); err != nil {
 				t.Fatal(err)
 			}
 			defer os.Remove(tt.given)
@@ -32,12 +33,4 @@ func TestAlarm(t *testing.T) {
 			}
 		})
 	}
-}
-
-func emptyFile(path string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	return f.Close()
 }

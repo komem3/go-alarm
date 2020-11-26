@@ -15,6 +15,41 @@ type taskJson struct {
 	Name  string        `json:"name"`
 }
 
+type timeParser struct {
+	hour int
+	min  int
+	sec  int
+	err  error
+}
+
+func (t *timeParser) setHour(h string) *timeParser {
+	if t.err != nil {
+		return t
+	}
+	t.hour, t.err = strconv.Atoi(h)
+	return t
+}
+
+func (t *timeParser) setMin(m string) *timeParser {
+	if t.err != nil {
+		return t
+	}
+	t.min, t.err = strconv.Atoi(m)
+	return t
+}
+
+func (t *timeParser) setSec(s string) *timeParser {
+	if t.err != nil {
+		return t
+	}
+	t.sec, t.err = strconv.Atoi(s)
+	return t
+}
+
+func (t *timeParser) time(now time.Time) time.Time {
+	return time.Date(now.Day(), now.Month(), now.Day(), t.hour, t.min, t.sec, 0, time.Local)
+}
+
 func convertTask(tasks []taskJson) rtn.Routine {
 	r := make(rtn.Routine, 0, len(tasks))
 	for _, t := range tasks {
@@ -30,40 +65,19 @@ func convertTask(tasks []taskJson) rtn.Routine {
 func timeParse(tstr string) (d time.Duration, err error) {
 	now := time.Now()
 	times := strings.Split(tstr, ":")
-	var alarmTime time.Time
+	parser := &timeParser{
+		hour: now.Hour(),
+		min:  now.Minute(),
+		sec:  now.Second(),
+	}
 	switch len(times) {
 	case 3:
-		hour, err := strconv.Atoi(times[0])
-		if err != nil {
-			return 0, err
-		}
-		min, err := strconv.Atoi(times[1])
-		if err != nil {
-			return 0, err
-		}
-		sec, err := strconv.Atoi(times[2])
-		if err != nil {
-			return 0, err
-		}
-		alarmTime = time.Date(now.Year(), now.Month(), now.Day(), hour, min, sec, 0, time.Local)
+		parser.setHour(times[0]).setMin(times[1]).setSec(times[2])
 	case 2:
-		hour, err := strconv.Atoi(times[0])
-		if err != nil {
-			return 0, err
-		}
-		min, err := strconv.Atoi(times[1])
-		if err != nil {
-			return 0, err
-		}
-		alarmTime = time.Date(now.Year(), now.Month(), now.Day(), hour, min, 0, 0, time.Local)
+		parser.setHour(times[0]).setMin(times[1])
 	case 1:
-		hour, err := strconv.Atoi(times[0])
-		if err != nil {
-			return 0, err
-		}
-		alarmTime = time.Date(now.Year(), now.Month(), now.Day(), hour, 0, 0, 0, time.Local)
+		parser.setHour(times[0])
 	}
 
-	d = time.Until(alarmTime)
-	return
+	return time.Until(parser.time(now)), parser.err
 }

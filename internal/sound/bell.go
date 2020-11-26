@@ -23,6 +23,8 @@ type Player interface {
 	PlayWait()
 }
 
+var ErrUnsuportExt = fmt.Errorf("unsuported ext")
+
 func NewAalarm(path string) (Player, error) {
 	log.Printf("sound file is %s\n", path)
 	f, err := os.Open(path)
@@ -39,7 +41,7 @@ func NewAalarm(path string) (Player, error) {
 	case ".wav":
 		streamer, format, err = wav.Decode(f)
 	default:
-		err = fmt.Errorf("unsuported ext %s", filepath.Ext(path))
+		err = fmt.Errorf("open %s: %w", filepath.Ext(path), ErrUnsuportExt)
 	}
 	if err != nil {
 		return nil, err

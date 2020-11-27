@@ -47,7 +47,7 @@ func (t *timeParser) setSec(s string) *timeParser {
 }
 
 func (t *timeParser) time(now time.Time) time.Time {
-	return time.Date(now.Day(), now.Month(), now.Day(), t.hour, t.min, t.sec, 0, time.Local)
+	return time.Date(now.Year(), now.Month(), now.Day(), t.hour, t.min, t.sec, 0, time.Local)
 }
 
 func convertTask(tasks []taskJson) rtn.Routine {
@@ -62,8 +62,7 @@ func convertTask(tasks []taskJson) rtn.Routine {
 	return r
 }
 
-func timeParse(tstr string) (d time.Duration, err error) {
-	now := time.Now()
+func timeParse(tstr string, now time.Time) (d time.Duration, err error) {
 	times := strings.Split(tstr, ":")
 	parser := &timeParser{
 		hour: now.Hour(),
@@ -79,5 +78,9 @@ func timeParse(tstr string) (d time.Duration, err error) {
 		parser.setHour(times[0])
 	}
 
-	return time.Until(parser.time(now)), parser.err
+	if parser.err != nil {
+		return 0, parser.err
+	}
+
+	return parser.time(now).Sub(now), parser.err
 }

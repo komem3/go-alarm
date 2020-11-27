@@ -105,7 +105,7 @@ func exec(parser *flagPaser, args []string) error {
 	var duration time.Duration
 	if parser.time != "" {
 		log.Printf("input time: %s\n", parser.time)
-		duration, err = timeParse(parser.time)
+		duration, err = timeParse(parser.time, time.Now())
 		if err != nil {
 			return fmt.Errorf("parse time arg: %w", err)
 		}

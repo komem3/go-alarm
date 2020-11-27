@@ -2,6 +2,7 @@ package timeserver
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -58,7 +59,7 @@ func (t *timeServer) Listen(in io.Reader) (result Result) {
 	return t.finishRace(t.readCommand, t.finish)
 }
 
-func (t *timeServer) readCommand() (result Result) {
+func (t *timeServer) readCommand(ctx context.Context) (result Result) {
 	status := RunningStatus
 	var pauseLeft time.Duration
 	buf := bufio.NewReader(t.reader)
@@ -146,23 +147,29 @@ func (t *timeServer) readCommand() (result Result) {
 	return result
 }
 
-func (t *timeServer) finish() Result {
-	<-t.ticker.C
-	t.running = false
-	r := Result{
-		Status: FinishStatus,
-		Task:   t.task,
+func (t *timeServer) finish(ctx context.Context) (result Result) {
+	select {
+	case <-ctx.Done():
+	case <-t.ticker.C:
+		t.running = false
+		result = Result{
+			Status: FinishStatus,
+			Task:   t.task,
+		}
+		t.handler.Serve(result)
 	}
-	t.handler.Serve(r)
-	return r
+	return result
 }
 
-func (t *timeServer) finishRace(fs ...func() Result) Result {
+func (t *timeServer) finishRace(fs ...func(ctx context.Context) Result) Result {
 	results := make(chan Result, len(fs))
+	ctx, cancel := context.WithCancel(context.Background())
 	for _, f := range fs {
-		go func(f func() Result) {
-			results <- f()
+		go func(f func(context.Context) Result) {
+			results <- f(ctx)
 		}(f)
 	}
-	return <-results
+	r := <-results
+	cancel()
+	return r
 }
